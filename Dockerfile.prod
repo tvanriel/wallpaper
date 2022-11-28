@@ -1,0 +1,9 @@
+FROM golang:alpine as builder
+ADD . /code
+WORKDIR /code
+RUN go build -o /tmp/build /code/cmd/server 
+
+FROM alpine:latest
+COPY --from=builder /tmp/build /usr/local/bin/wallpaperserver
+RUN mkdir -p /opt/wallpapers/config /opt/wallpapers/assets
+CMD wallpaperserver

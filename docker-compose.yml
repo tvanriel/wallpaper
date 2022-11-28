@@ -1,0 +1,14 @@
+version: '3.7'
+
+services:
+  backend:
+    build: .
+    environment:
+      - "BUILD_COMMAND=go build -o /tmp/build ./cmd/server" 
+    ports:
+     - "8080:8080"
+    volumes:
+     - .:/code
+     - ./assets:/opt/wallpapers/assets
+     - ./config:/opt/wallpapers/config
+    working_dir: /code 
