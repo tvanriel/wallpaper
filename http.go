@@ -1,7 +1,7 @@
 package wallpaper
 
 import (
-	"fmt"
+  "slices"
 	"math/rand"
 	"net/http"
 	"os"
@@ -34,6 +34,7 @@ func NewWallpaperHandler(fromDirectory string) *WallpaperHandler {
 
 func (w *WallpaperHandler) registerRoutes() {
 	w.srv.GET("/", getWallpaperHandler(w.Directory))
+  w.srv.GET("/healthz", healthHandler)
 	w.srv.Static("/w", w.Directory)
 }
 
@@ -44,6 +45,12 @@ type errorResponseBody struct {
 
 func internalServerError(err string) (int, errorResponseBody) {
 	return http.StatusInternalServerError, errorResponseBody{Error: "Internal Server Error", Message: err}
+}
+
+
+func healthHandler(ctx *gin.Context) {
+  ctx.Header("Content-Type", "application/json")
+  ctx.Writer.WriteString(`{"status":"ok"}`)
 }
 
 func getWallpaperHandler(rootPath string) gin.HandlerFunc {
@@ -65,16 +72,30 @@ func getWallpaperHandler(rootPath string) gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-		rand := getPseudoRandom()
-		picked := entries[rand.Intn(len(entries))]
-		picked.Info()
+  
+    var picked os.DirEntry
 
-		fmt.Println(picked.Name())
+    i := 0
+    for picked == nil || inBannedWords(picked.Name()) {
+		  rand := getPseudoRandom(i)
+      i++
+		  picked = entries[rand.Intn(len(entries))]
+		  picked.Info()
+    }
+
 		ctx.Redirect(302, "/w/"+picked.Name())
 	}
 }
-func getPseudoRandom() *rand.Rand {
+func getPseudoRandom(offset int) *rand.Rand {
 	year, month, date := time.Now().Date()
-	seed := (year * 10000) + (int(month) * 100) + date
+	seed := (year * 100000) + (int(month) * 1000) + (date *10) + offset
 	return rand.New(rand.NewSource(int64(seed)))
+}
+
+var bannedEntries = []string{
+  "lost+found",
+}
+
+func inBannedWords(s string) bool {
+  return slices.Contains(bannedEntries, s)
 }
